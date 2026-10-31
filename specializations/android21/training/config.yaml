@@ -1,0 +1,22 @@
+specialization:
+  name: odoo19
+  version: "1.0"
+  description: "Odoo 19 Development Specialization"
+
+model:
+  base_model: "Qwen/Qwen3-8B"
+  output_adapter: "../../adapters/odoo19"
+
+training:
+  method: qlora
+  quantization: 4bit
+  epochs: 2
+  batch_size: 1
+  gradient_accumulation_steps: 8
+  learning_rate: 0.0001
+  max_seq_length: 1024
+
+dataset:
+  training: "../dataset/training.jsonl"
+  validation: "../dataset/validation.jsonl"
+  test: "../dataset/test.jsonl"

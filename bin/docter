@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+
+# check if the local server health work
+curl -f http://localhost:8000/health || echo "Local server health check failed"

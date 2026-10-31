@@ -1,0 +1,22 @@
+{
+	"mcpServers": {
+		"microsoft/markitdown": {
+			"type": "stdio",
+			"command": "/home/maso/ai-envs/.venv/bin/markitdown-mcp",
+			"args": [],
+			"tools": [
+				"*"
+			]
+		},
+		"odoo-mcp": {
+			"type": "http",
+			"url": "http://127.0.0.1:8069/mcp",
+			"tools": [
+				"*"
+			],
+			"headers": {
+				"Authorization": "Bearer 76cbc38bd5b7b28e147336164fb66f7138e77955"
+			}
+		}
+	}
+}

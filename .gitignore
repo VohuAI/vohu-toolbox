@@ -1,0 +1,31 @@
+.env
+.venv/
+models/
+logs/
+
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# Datasets
+dataset/raw/
+dataset/processed/
+
+# Model weights
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.gguf
+
+# Training outputs
+checkpoints/
+runs/
+logs/
+
+# Adapters and merged models
+adapters/
+models/

@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+select_model() {
+    local file
+    local model_name
+    local key
+    local key2
+    local key3
+    local index=0
+    local line_count
+    local saved_tty
+    local tty_fd
+    local first_render=1
+    local -a models=()
+
+    for file in models/*.env; do
+        [[ -f "$file" ]] || continue
+        model_name="${file##*/}"
+        models+=("${model_name%.env}")
+    done
+
+    if ((${#models[@]} == 0)); then
+        echo "Error: No model configurations found in models/." >&2
+        return 1
+    fi
+
+    if ! exec {tty_fd}<>/dev/tty; then
+        echo "Error: Model selection requires an interactive terminal." >&2
+        return 1
+    fi
+
+    saved_tty=$(stty -g <&"$tty_fd") || {
+        exec {tty_fd}>&-
+        echo "Error: Could not read terminal settings." >&2
+        return 1
+    }
+
+    if ! stty -echo -icanon min 1 time 0 <&"$tty_fd"; then
+        exec {tty_fd}>&-
+        echo "Error: Could not configure terminal for model selection." >&2
+        return 1
+    fi
+
+    trap 'stty "$saved_tty" <&"$tty_fd"; exit 130' INT TERM HUP
+    line_count=$((${#models[@]} + 1))
+
+    while true; do
+        if ((first_render)); then
+            first_render=0
+        else
+            printf '\033[%dA\r\033[J' "$line_count" >&"$tty_fd"
+        fi
+
+        printf 'Available models (use Up/Down, Enter to select):\n' >&"$tty_fd"
+        for file in "${!models[@]}"; do
+            if ((file == index)); then
+                printf ' > %s\n' "${models[file]}" >&"$tty_fd"
+            else
+                printf '   %s\n' "${models[file]}" >&"$tty_fd"
+            fi
+        done
+
+        if ! IFS= read -r -s -n 1 -u "$tty_fd" key; then
+            break
+        fi
+
+        case "$key" in
+            $'\x1b')
+                if IFS= read -r -s -n 1 -t 0.1 -u "$tty_fd" key2 &&
+                    [[ "$key2" == "[" || "$key2" == "O" ]] &&
+                    IFS= read -r -s -n 1 -t 0.1 -u "$tty_fd" key3; then
+                    case "$key3" in
+                        A) ((index > 0)) && index=$((index - 1)) ;;
+                        B) ((index < ${#models[@]} - 1)) && index=$((index + 1)) ;;
+                    esac
+                else
+                    break
+                fi
+                ;;
+            "")
+                model="${models[index]}"
+                stty "$saved_tty" <&"$tty_fd"
+                trap - INT TERM HUP
+                printf '\n' >&"$tty_fd"
+                exec {tty_fd}>&-
+                return 0
+                ;;
+            $'\x03'|$'\x04')
+                break
+                ;;
+        esac
+
+        key=""
+    done
+
+    stty "$saved_tty" <&"$tty_fd"
+    trap - INT TERM HUP
+    printf '\n' >&"$tty_fd"
+    exec {tty_fd}>&-
+    echo "Error: Model selection cancelled." >&2
+    return 1
+}
+
+run_compose() {
+    local model="$1"
+    shift
+
+    local model_env="models/${model}.env"
+    if [[ ! -f "$model_env" ]]; then
+        echo "Error: Model configuration not found: $model_env" >&2
+        exit 1
+    fi
+
+    echo "Loading model $model_env."
+    docker compose \
+        --env-file .env \
+        --env-file "$model_env" \
+        -p "$model" \
+        -f compose.yaml \
+        "$@"
+}
+
+command=""
+model=""
+while (($#)); do
+    case "$1" in
+        start|stop)
+            if [[ -n "$command" ]]; then
+                echo "Error: Specify only one command (start or stop)." >&2
+                exit 1
+            fi
+            command="$1"
+            shift
+            ;;
+        -m)
+            if (($# < 2)); then
+                echo "Error: -m requires a model name." >&2
+                exit 1
+            fi
+            model="$2"
+            shift 2
+            ;;
+        --help|-h)
+            echo "Usage: $0 [start|stop] [-m MODEL]"
+            exit 0
+            ;;
+        *)
+            if [[ -z "$model" ]]; then
+                model="$1"
+                # Preserve the previous behavior: a model name alone starts it.
+                [[ -n "$command" ]] || command="start"
+            else
+                echo "Error: Unexpected argument: $1" >&2
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+if [[ -z "$command" ]]; then
+    read -r -p "Command (start/stop): " command
+fi
+
+if [[ "$command" != "start" && "$command" != "stop" ]]; then
+    echo "Error: Command must be 'start' or 'stop'." >&2
+    exit 1
+fi
+
+if [[ -z "$model" ]]; then
+    select_model
+fi
+
+if [[ "$command" == "start" ]]; then
+    run_compose "$model" up -d
+else
+    run_compose "$model" down
+fi
