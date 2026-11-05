@@ -15,10 +15,10 @@ select_model() {
     local first_render=1
     local -a models=()
 
-    for file in models/*.env; do
+    for file in models/*.yaml; do
         [[ -f "$file" ]] || continue
         model_name="${file##*/}"
-        models+=("${model_name%.env}")
+        models+=("${model_name%.yaml}")
     done
 
     if ((${#models[@]} == 0)); then
@@ -107,28 +107,44 @@ run_compose() {
     local model="$1"
     shift
 
-    local model_env="models/${model}.env"
+    local model_env="models/${model}.yaml"
     if [[ ! -f "$model_env" ]]; then
         echo "Error: Model configuration not found: $model_env" >&2
         exit 1
     fi
 
     echo "Loading model $model_env."
-    docker compose \
+    MODEL_CONFIG=${model}.yaml docker compose \
         --env-file .env \
-        --env-file "$model_env" \
         -p "$model" \
         -f compose.yaml \
         "$@"
+}
+
+get_version(){
+    echo "Docker compose version:"
+    docker compose version
+
+    echo "Docker version:"
+    docker version
+
+    echo "VLLM version:"
+    docker compose run \
+        --rm vllm \
+        vllm --help
+}
+
+echo_help() {
+    echo "Usage: $0 [start|stop|version] [-m MODEL] [-v|--verbose] [--help|-h]"
 }
 
 command=""
 model=""
 while (($#)); do
     case "$1" in
-        start|stop)
+        start|stop|version)
             if [[ -n "$command" ]]; then
-                echo "Error: Specify only one command (start or stop)." >&2
+                echo "Error: Specify only one command (start, stop, or version)." >&2
                 exit 1
             fi
             command="$1"
@@ -142,8 +158,12 @@ while (($#)); do
             model="$2"
             shift 2
             ;;
+        -v|--verbose)
+            export VERBOSE=true
+            shift
+            ;;
         --help|-h)
-            echo "Usage: $0 [start|stop] [-m MODEL]"
+            echo_help
             exit 0
             ;;
         *)
@@ -164,17 +184,24 @@ if [[ -z "$command" ]]; then
     read -r -p "Command (start/stop): " command
 fi
 
-if [[ "$command" != "start" && "$command" != "stop" ]]; then
-    echo "Error: Command must be 'start' or 'stop'." >&2
-    exit 1
+if [[ "$command" == "version" ]]; then
+    get_version
+    exit 0
 fi
 
 if [[ -z "$model" ]]; then
     select_model
 fi
 
-if [[ "$command" == "start" ]]; then
-    run_compose "$model" up -d
-else
+if [[ "$command" == "stop" ]]; then
     run_compose "$model" down
+    exit 0
+fi
+
+OPTIONS=""
+if [[ "$command" == "start" ]]; then
+    if [[ -z "$VERBOSE" ]]; then
+        OPTIONS="-d"
+    fi
+    run_compose "$model" up $OPTIONS
 fi

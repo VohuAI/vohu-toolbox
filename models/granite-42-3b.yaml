@@ -1,0 +1,26 @@
+# Host Configuration
+host: 0.0.0.0
+port: 8000
+
+# Model Configuration
+model: ibm-granite/granite-4.2-3b
+served-model-name:
+  - local-granite-42-3b
+
+dtype: bfloat16
+max-model-len: 40960
+max-num-seqs: 1
+
+# GPU Configuration
+gpu-memory-utilization: 0.97
+
+enable-prefix-caching: true
+
+trust-remote-code: true
+
+# Tool Calling
+enable-auto-tool-choice: true
+tool-call-parser: qwen3_coder
+
+# Reasoning
+reasoning-parser: nemotron_v3

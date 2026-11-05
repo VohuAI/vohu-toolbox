@@ -1,0 +1,23 @@
+# Host Configuration
+host: 0.0.0.0
+port: 8000
+
+# Model Configuration
+model: Qwen/Qwen3.5-4B
+served-model-name:
+  - local-qwen35-4b
+
+
+dtype: auto
+max-model-len: auto
+max-num-seqs: 1
+
+# GPU Configuration
+gpu-memory-utilization: 0.96
+
+enable-prefix-caching: true
+
+trust-remote-code: true
+enable-auto-tool-choice: true
+tool-call-parser: hermes
+reasoning-parser: qwen3

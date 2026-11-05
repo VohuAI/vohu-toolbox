@@ -1,6 +1,5 @@
 .env
 .venv/
-models/
 logs/
 
 
@@ -28,4 +27,3 @@ logs/
 
 # Adapters and merged models
 adapters/
-models/

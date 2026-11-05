@@ -1,0 +1,24 @@
+# Host Configuration
+host: 0.0.0.0
+port: 8000
+
+# Model Configuration
+model: google/gemma-3-4b-it
+served-model-name:
+  - local-gemma3-4b
+
+dtype: bfloat16
+max-model-len: 13792
+max-num-seqs: 1
+
+# GPU Configuration
+gpu-memory-utilization: 0.90
+
+# Performance
+enable-prefix-caching: true
+
+# Model Compatibility
+trust-remote-code: false
+enable-auto-tool-choice: true
+tool-call-parser: hf
+
